@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevelopmentWithADot.ElasticObject", "DevelopmentWithADot.ElasticObject\DevelopmentWithADot.ElasticObject.csproj", "{7FD8F277-3876-41EC-94AA-2B20046B3ADE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevelopmentWithADot.ElasticObject.Tests", "DevelopmentWithADot.ElasticObject.Tests\DevelopmentWithADot.ElasticObject.Tests.csproj", "{8F8A2537-216B-4022-BF5A-CD18EDC1D556}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7FD8F277-3876-41EC-94AA-2B20046B3ADE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FD8F277-3876-41EC-94AA-2B20046B3ADE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FD8F277-3876-41EC-94AA-2B20046B3ADE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FD8F277-3876-41EC-94AA-2B20046B3ADE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F8A2537-216B-4022-BF5A-CD18EDC1D556}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F8A2537-216B-4022-BF5A-CD18EDC1D556}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F8A2537-216B-4022-BF5A-CD18EDC1D556}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F8A2537-216B-4022-BF5A-CD18EDC1D556}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
