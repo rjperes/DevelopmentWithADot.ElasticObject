@@ -10,7 +10,9 @@ using System.Reflection;
 namespace DevelopmentWithADot.ElasticObject
 {
 	[Serializable]
-	public sealed class ElasticObject : DynamicObject, IDictionary<String, Object>, INotifyPropertyChanged, ICloneable
+	[TypeConverter(typeof(ElasticObjectTypeConverter))]
+	[TypeDescriptionProvider(typeof(ElasticObjectTypeDescriptionProvider))]
+	public sealed class ElasticObject : DynamicObject, IDictionary<String, Object>, ICloneable, INotifyPropertyChanged
 	{
 		#region Private readonly fields
 		private readonly IDictionary<String, Object> values = new Dictionary<String, Object>();
@@ -37,7 +39,7 @@ namespace DevelopmentWithADot.ElasticObject
 			}
 			else
 			{
-				IDictionary<String, Object> dict = this;
+				var dict = this as IDictionary<String, Object>;
 				return (String.Format("{{{0}}}", String.Join(", ", dict.Keys.Zip(dict.Values, (k, v) => String.Format("{0}={1}", k, v)))));
 			}
 		}
@@ -61,7 +63,7 @@ namespace DevelopmentWithADot.ElasticObject
 				return (true);
 			}
 
-			ElasticObject other = obj as ElasticObject;
+			var other = obj as ElasticObject;
 
 			if (other == null)
 			{
@@ -83,31 +85,15 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override Boolean TryBinaryOperation(BinaryOperationBinder binder, Object arg, out Object result)
 		{
-			if (this.value != null)
+			if (binder.Operation == ExpressionType.Equal)
 			{
-				if (binder.Operation == ExpressionType.Equal)
-				{
-					result = Object.Equals(this.value, arg);
-					return (true);
-				}
-				else if (binder.Operation == ExpressionType.NotEqual)
-				{
-					result = !Object.Equals(this.value, arg);
-					return (true);
-				}
+				result = Object.Equals(this.value, arg);
+				return (true);
 			}
-			else
+			else if (binder.Operation == ExpressionType.NotEqual)
 			{
-				if (binder.Operation == ExpressionType.Equal)
-				{
-					result = (arg == null);
-					return (true);
-				}
-				else if (binder.Operation == ExpressionType.NotEqual)
-				{
-					result = (arg != null);
-					return (true);
-				}
+				result = !Object.Equals(this.value, arg);
+				return (true);
 			}
 
 			return (base.TryBinaryOperation(binder, arg, out result));
@@ -115,144 +101,141 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override Boolean TryUnaryOperation(UnaryOperationBinder binder, out Object result)
 		{
-			if (this.value != null)
+			if (binder.Operation == ExpressionType.Increment)
 			{
-				if (binder.Operation == ExpressionType.Increment)
+				if (this.value is Int16)
 				{
-					if (this.value is Int16)
-					{
-						result = (Int16)value + 1;
-						return (true);
-					}
-					else if (this.value is Int32)
-					{
-						result = (Int32)value + 1;
-						return (true);
-					}
-					else if (this.value is Int64)
-					{
-						result = (Int64)value + 1;
-						return (true);
-					}
-					else if (this.value is UInt16)
-					{
-						result = (UInt16)value + 1;
-						return (true);
-					}
-					else if (this.value is UInt32)
-					{
-						result = (UInt32)value + 1;
-						return (true);
-					}
-					else if (this.value is UInt64)
-					{
-						result = (UInt64)value + 1;
-						return (true);
-					}
-					else if (this.value is Decimal)
-					{
-						result = (Decimal)value + 1;
-						return (true);
-					}
-					else if (this.value is Single)
-					{
-						result = (Single)value + 1;
-						return (true);
-					}
-					else if (this.value is Double)
-					{
-						result = (Double)value + 1;
-						return (true);
-					}
+					result = (Int16)value + 1;
+					return (true);
 				}
-				else if (binder.Operation == ExpressionType.Decrement)
+				else if (this.value is Int32)
 				{
-					if (this.value is Int16)
-					{
-						result = (Int16)value - 1;
-						return (true);
-					}
-					else if (this.value is Int32)
-					{
-						result = (Int32)value - 1;
-						return (true);
-					}
-					else if (this.value is Int64)
-					{
-						result = (Int64)value - 1;
-						return (true);
-					}
-					else if (this.value is UInt16)
-					{
-						result = (UInt16)value - 1;
-						return (true);
-					}
-					else if (this.value is UInt32)
-					{
-						result = (UInt32)value - 1;
-						return (true);
-					}
-					else if (this.value is UInt64)
-					{
-						result = (UInt64)value - 1;
-						return (true);
-					}
-					else if (this.value is Decimal)
-					{
-						result = (Decimal)value - 1;
-						return (true);
-					}
-					else if (this.value is Single)
-					{
-						result = (Single)value - 1;
-						return (true);
-					}
-					else if (this.value is Double)
-					{
-						result = (Double)value - 1;
-						return (true);
-					}
+					result = (Int32)value + 1;
+					return (true);
 				}
-				else if (binder.Operation == ExpressionType.Not)
+				else if (this.value is Int64)
 				{
-					if (this.value is Boolean)
-					{
-						result = !(Boolean)value;
-						return (true);
-					}
+					result = (Int64)value + 1;
+					return (true);
 				}
-				else if (binder.Operation == ExpressionType.OnesComplement)
+				else if (this.value is UInt16)
 				{
-					if (this.value is Int16)
-					{
-						result = ~(Int16)value;
-						return (true);
-					}
-					else if (this.value is Int32)
-					{
-						result = ~(Int32)value;
-						return (true);
-					}
-					else if (this.value is Int64)
-					{
-						result = ~(Int64)value;
-						return (true);
-					}
-					else if (this.value is UInt16)
-					{
-						result = ~(UInt16)value;
-						return (true);
-					}
-					else if (this.value is UInt32)
-					{
-						result = ~(UInt32)value;
-						return (true);
-					}
-					else if (this.value is UInt64)
-					{
-						result = ~(UInt64)value;
-						return (true);
-					}
+					result = (UInt16)value + 1;
+					return (true);
+				}
+				else if (this.value is UInt32)
+				{
+					result = (UInt32)value + 1;
+					return (true);
+				}
+				else if (this.value is UInt64)
+				{
+					result = (UInt64)value + 1;
+					return (true);
+				}
+				else if (this.value is Decimal)
+				{
+					result = (Decimal)value + 1;
+					return (true);
+				}
+				else if (this.value is Single)
+				{
+					result = (Single)value + 1;
+					return (true);
+				}
+				else if (this.value is Double)
+				{
+					result = (Double)value + 1;
+					return (true);
+				}
+			}
+			else if (binder.Operation == ExpressionType.Decrement)
+			{
+				if (this.value is Int16)
+				{
+					result = (Int16)value - 1;
+					return (true);
+				}
+				else if (this.value is Int32)
+				{
+					result = (Int32)value - 1;
+					return (true);
+				}
+				else if (this.value is Int64)
+				{
+					result = (Int64)value - 1;
+					return (true);
+				}
+				else if (this.value is UInt16)
+				{
+					result = (UInt16)value - 1;
+					return (true);
+				}
+				else if (this.value is UInt32)
+				{
+					result = (UInt32)value - 1;
+					return (true);
+				}
+				else if (this.value is UInt64)
+				{
+					result = (UInt64)value - 1;
+					return (true);
+				}
+				else if (this.value is Decimal)
+				{
+					result = (Decimal)value - 1;
+					return (true);
+				}
+				else if (this.value is Single)
+				{
+					result = (Single)value - 1;
+					return (true);
+				}
+				else if (this.value is Double)
+				{
+					result = (Double)value - 1;
+					return (true);
+				}
+			}
+			else if (binder.Operation == ExpressionType.Not)
+			{
+				if (this.value is Boolean)
+				{
+					result = !(Boolean)value;
+					return (true);
+				}
+			}
+			else if (binder.Operation == ExpressionType.OnesComplement)
+			{
+				if (this.value is Int16)
+				{
+					result = ~(Int16)value;
+					return (true);
+				}
+				else if (this.value is Int32)
+				{
+					result = ~(Int32)value;
+					return (true);
+				}
+				else if (this.value is Int64)
+				{
+					result = ~(Int64)value;
+					return (true);
+				}
+				else if (this.value is UInt16)
+				{
+					result = ~(UInt16)value;
+					return (true);
+				}
+				else if (this.value is UInt32)
+				{
+					result = ~(UInt32)value;
+					return (true);
+				}
+				else if (this.value is UInt64)
+				{
+					result = ~(UInt64)value;
+					return (true);
 				}
 			}
 
@@ -261,7 +244,7 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override Boolean TryInvokeMember(InvokeMemberBinder binder, Object[] args, out Object result)
 		{
-			MethodInfo method = this.GetType().GetMethod(binder.Name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			var method = this.GetType().GetMethod(binder.Name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
 			if (method == null)
 			{
@@ -347,6 +330,7 @@ namespace DevelopmentWithADot.ElasticObject
 			}
 
 			(this as IDictionary<String, Object>)[binder.Name] = value;
+
 			return (true);
 		}
 
@@ -373,11 +357,11 @@ namespace DevelopmentWithADot.ElasticObject
 				return (false);
 			}
 
-			String key = indexes.First() as String;
+			var key = indexes.First() as String;
 
 			if (indexes[0] is Int32)
 			{
-				Int32 index = (Int32)indexes[0];
+				var index = (Int32)indexes[0];
 
 				if (this.values.Count < index)
 				{
@@ -400,7 +384,7 @@ namespace DevelopmentWithADot.ElasticObject
 
 			if (indexes[0] is Int32)
 			{
-				Int32 index = (Int32)indexes[0];
+				var index = (Int32)indexes[0];
 
 				if (this.values.Count < index)
 				{
@@ -417,7 +401,7 @@ namespace DevelopmentWithADot.ElasticObject
 
 		void IDictionary<String,Object>.Add(String key, Object value)
 		{
-			this.values.Add(key, value);
+			(this as IDictionary<String,Object>)[key] = value;
 		}
 
 		Boolean IDictionary<String,Object>.ContainsKey(String key)
@@ -472,10 +456,17 @@ namespace DevelopmentWithADot.ElasticObject
 					this.values[key] = new ElasticObject(value);
 				}
 
-				if (this.PropertyChanged != null)
-				{
-					this.PropertyChanged(this, new PropertyChangedEventArgs(key));
-				}
+				this.OnPropertyChanged(new PropertyChangedEventArgs(key));
+			}
+		}
+
+		private void OnPropertyChanged(PropertyChangedEventArgs e)
+		{
+			var handler = this.PropertyChanged;
+
+			if (handler != null)
+			{
+				handler(this, e);
 			}
 		}
 
@@ -485,7 +476,7 @@ namespace DevelopmentWithADot.ElasticObject
 
 		void ICollection<KeyValuePair<String,Object>>.Add(KeyValuePair<String, Object> item)
 		{
-			this.values.Add(item);
+			(this as IDictionary<String, Object>)[item.Key] = item.Value;
 		}
 
 		void ICollection<KeyValuePair<String,Object>>.Clear()
@@ -554,9 +545,9 @@ namespace DevelopmentWithADot.ElasticObject
 
 		Object ICloneable.Clone()
 		{
-			IDictionary<String, Object> clone = new ElasticObject(this.value);
+			var clone = new ElasticObject(this.value) as IDictionary<String, Object>;
 
-			foreach (String key in this.values.Keys)
+			foreach (var key in this.values.Keys)
 			{
 				clone[key] = this.values[key];
 			}

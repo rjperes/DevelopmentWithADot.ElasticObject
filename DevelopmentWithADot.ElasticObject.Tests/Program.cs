@@ -1,4 +1,7 @@
 ﻿using System;
+using System.ComponentModel;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace DevelopmentWithADot.ElasticObject.Tests
 {
@@ -8,6 +11,7 @@ namespace DevelopmentWithADot.ElasticObject.Tests
 		{
 			dynamic obj = new ElasticObject(1);
 			Int32 i = obj;
+			Single f = obj;
 			String s = obj;
 			DayOfWeek dow = obj;
 			Boolean b = obj;
@@ -22,8 +26,16 @@ namespace DevelopmentWithADot.ElasticObject.Tests
 		static void TestDeepMembers()
 		{
 			dynamic obj = new ElasticObject();
-			obj.A = new ElasticObject();
+			obj.A = 1;
 			obj.A.B = "1";
+		}
+
+		static void TestDynamicMemberAccess()
+		{
+			dynamic obj = new ElasticObject();
+			obj.A = "A";
+
+			var a = obj["A"];
 		}
 
 		static void TestAnonymous()
@@ -49,14 +61,57 @@ namespace DevelopmentWithADot.ElasticObject.Tests
 			Boolean b2 = obj != null;
 		}
 
+		static void TestTypeDescriptor()
+		{
+			dynamic obj = new ElasticObject();
+			obj.Name = "ricardo";
+			var provider = TypeDescriptor.GetProvider(obj) as TypeDescriptionProvider;
+			var descriptor = provider.GetTypeDescriptor(obj) as ICustomTypeDescriptor;
+			var converter = descriptor.GetConverter() as TypeConverter;
+			var attrs = TypeDescriptor.GetAttributes(obj);
+			var props = TypeDescriptor.GetProperties(obj) as PropertyDescriptorCollection;
+			var prop = props["Name"] as PropertyDescriptor;
+			var value = prop.GetValue(obj);
+		}
+
+		static void TestNotifyPropertyChanged()
+		{
+			dynamic obj = new ElasticObject();
+			(obj as INotifyPropertyChanged).PropertyChanged += (s, e) =>
+				{
+					e.ToString();
+				};
+			obj.Name = "ricardo";
+		}
+
+		static void TestSerialization()
+		{
+			var formatter = new BinaryFormatter();
+			dynamic obj = new ElasticObject();
+			obj.Name = "Ricardo";
+
+			using (var stream = new MemoryStream())
+			{
+				formatter.Serialize(stream, obj);
+
+				stream.Position = 0;
+
+				obj = formatter.Deserialize(stream) as ElasticObject;
+			}
+		}
+
 		static void Main(String[] args)
 		{
+			TestSerialization();
+			TestNotifyPropertyChanged();
+			TestTypeDescriptor();
 			TestBinaryOperations();
 			TestUnaryOperations();
 			TestConvert();
 			TestImmediateMembers();
 			TestDeepMembers();
 			TestAnonymous();
+			TestDynamicMemberAccess();
 		}
 	}
 }

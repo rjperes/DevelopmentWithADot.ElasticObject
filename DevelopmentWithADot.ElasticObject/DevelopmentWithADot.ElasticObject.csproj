@@ -52,6 +52,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ElasticObject.cs" />
+    <Compile Include="ElasticObjectPropertyDescriptor.cs" />
+    <Compile Include="ElasticObjectTypeConverter.cs" />
+    <Compile Include="ElasticObjectTypeDescriptionProvider.cs" />
+    <Compile Include="ElasticObjectTypeDescriptor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
