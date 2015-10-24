@@ -33,7 +33,7 @@ namespace DevelopmentWithADot.ElasticObject
 			}
 			else
 			{
-				return (new ElasticObject(value));
+				return (new ElasticObject(null, value));
 			}
 		}
 

@@ -7,6 +7,48 @@ namespace DevelopmentWithADot.ElasticObject.Tests
 {
 	class Program
 	{
+        static void TestRoot()
+        {
+            dynamic obj = new ElasticObject();
+            obj.A = "1";
+            obj.A.B = 0;
+
+            var root = obj.A.B["$root"];
+        }
+
+        static void TestPath()
+        {
+            dynamic obj = new ElasticObject();
+            obj.A = "1";
+            obj.A.B = 0;
+
+            var path = obj.A.B["$path"];
+        }
+
+        static void TestParent()
+		{
+			dynamic obj = new ElasticObject();
+			obj.A = "1";
+
+			var parent = obj.A["$parent"];
+		}
+
+		static void TestValue()
+		{
+			dynamic obj = new ElasticObject();
+			obj.A = "1";
+
+			var parent = obj.A["$value"];
+		}
+
+		static void TestType()
+		{
+			dynamic obj = new ElasticObject();
+			obj.A = "1";
+
+			Type type = obj.A["$type"];
+		}
+
 		static void TestConvert()
 		{
 			dynamic obj = new ElasticObject(1);
@@ -102,6 +144,11 @@ namespace DevelopmentWithADot.ElasticObject.Tests
 
 		static void Main(String[] args)
 		{
+            TestRoot();
+		    TestPath();
+			TestType();
+			TestParent();
+			TestValue();
 			TestSerialization();
 			TestNotifyPropertyChanged();
 			TestTypeDescriptor();

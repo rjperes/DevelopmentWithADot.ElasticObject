@@ -6,6 +6,8 @@ using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace DevelopmentWithADot.ElasticObject
 {
@@ -15,18 +17,25 @@ namespace DevelopmentWithADot.ElasticObject
 	public sealed class ElasticObject : DynamicObject, IDictionary<String, Object>, ICloneable, INotifyPropertyChanged
 	{
 		#region Private readonly fields
+        private static readonly String [] SpecialKeys = new String[] { "$Path", "$Parent", "$Root", "$Value", "$Type" };
 		private readonly IDictionary<String, Object> values = new Dictionary<String, Object>();
-		private readonly Object value;
+		private Object value;
+		private ElasticObject parent;
 		#endregion
 
 		#region Public constructors
-		public ElasticObject() : this(null)
+		public ElasticObject() : this(null, null)
 		{
 		}
 
-		public ElasticObject(Object value)
+		internal ElasticObject(ElasticObject parent, Object value)
 		{
-			this.value = value;
+			this.parent = parent;
+			this.value = (value is ElasticObject) ? ((ElasticObject)value).value : value;
+		}
+
+		public ElasticObject(Object value) : this(null, value)
+		{
 		}
 		#endregion
 
@@ -80,7 +89,7 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override IEnumerable<String> GetDynamicMemberNames()
 		{
-			return (this.values.Keys);
+			return (this.values.Keys.Concat((this.value != null) ? TypeDescriptor.GetProperties(this.value).OfType<PropertyDescriptor>().Select(x => x.Name) : Enumerable.Empty<String>()));
 		}
 
 		public override Boolean TryBinaryOperation(BinaryOperationBinder binder, Object arg, out Object result)
@@ -248,7 +257,7 @@ namespace DevelopmentWithADot.ElasticObject
 
 			if (method == null)
 			{
-				foreach (Type type in this.GetType().GetInterfaces())
+				foreach (var type in this.GetType().GetInterfaces())
 				{
 					method = type.GetMethod(binder.Name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -275,7 +284,7 @@ namespace DevelopmentWithADot.ElasticObject
 		{
 			if (this.value != null)
 			{
-				if (binder.Type.IsAssignableFrom(this.value.GetType()) == true)
+				if (binder.Type.IsInstanceOfType(this.value) == true)
 				{
 					result = this.value;
 					return (true);
@@ -297,7 +306,7 @@ namespace DevelopmentWithADot.ElasticObject
 				}
 				else
 				{
-					TypeConverter converter = TypeDescriptor.GetConverter(binder.Type);
+					var converter = TypeDescriptor.GetConverter(binder.Type);
 
 					if (converter.CanConvertFrom(this.value.GetType()) == true)
 					{
@@ -318,17 +327,6 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override Boolean TrySetMember(SetMemberBinder binder, Object value)
 		{
-			if (this.value != null)
-			{
-				PropertyDescriptor prop = TypeDescriptor.GetProperties(this.value)[binder.Name];
-
-				if ((prop != null) && (prop.IsReadOnly == false))
-				{
-					prop.SetValue(this.value, value);
-					return (true);
-				}
-			}
-
 			(this as IDictionary<String, Object>)[binder.Name] = value;
 
 			return (true);
@@ -336,38 +334,42 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override Boolean TryGetMember(GetMemberBinder binder, out Object result)
 		{
-			if (this.value != null)
-			{
-				PropertyDescriptor prop = TypeDescriptor.GetProperties(this.value)[binder.Name];
+            if (this.value != null)
+            {
+                var prop = TypeDescriptor.GetProperties(this.value)[binder.Name];
 
-				if (prop != null)
-				{
-					result = prop.GetValue(this.value);
-					return (true);
-				}
-			}
+                if (prop != null)
+                {
+                    result = prop.GetValue(this.value);
+                    return (true);
+                }
+            }
 
-			return (this.values.TryGetValue(binder.Name, out result));
+            return (this.values.TryGetValue(binder.Name, out result));
 		}
 
 		public override Boolean TrySetIndex(SetIndexBinder binder, Object[] indexes, Object value)
 		{
-			if ((indexes.Count() != 1) || (indexes[0] == null))
+			if ((indexes.Count() != 1) || (indexes.First() == null))
 			{
 				return (false);
 			}
 
 			var key = indexes.First() as String;
 
-			if (indexes[0] is Int32)
+			if (indexes.First() is Int32)
 			{
-				var index = (Int32)indexes[0];
+				var index = (Int32)indexes.First();
 
 				if (this.values.Count < index)
 				{
 					key = this.values.ElementAt(index).Key;
 				}
 			}
+            else if (key == null)
+            {
+                return (false);
+            }
 
 			(this as IDictionary<String, Object>)[key] = value;
 
@@ -376,15 +378,87 @@ namespace DevelopmentWithADot.ElasticObject
 
 		public override Boolean TryGetIndex(GetIndexBinder binder, Object[] indexes, out Object result)
 		{
-			if ((indexes.Count() != 1) || (indexes[0] == null))
+			if ((indexes.Count() != 1) || (indexes.First() == null))
 			{
 				result = null;
 				return (false);
 			}
 
-			if (indexes[0] is Int32)
+			var key = indexes.First() as String;
+
+			if (key != null)
 			{
-				var index = (Int32)indexes[0];
+                if (this.value != null)
+                {
+                    var prop = TypeDescriptor.GetProperties(this.value)[key];
+
+                    if (prop != null)
+                    {
+                        result = prop.GetValue(this.value);
+                        return (true);
+                    }
+                }
+
+                if (String.Equals("$parent", key, StringComparison.InvariantCultureIgnoreCase) == true)
+				{
+					result = this.parent;
+					return (true);
+				}
+				else if (String.Equals("$value", key, StringComparison.InvariantCultureIgnoreCase) == true)
+				{
+					result = this.value;
+					return (true);
+				}
+				else if (String.Equals("$type", key, StringComparison.InvariantCultureIgnoreCase) == true)
+				{
+					result = ((this.value != null) ? this.value.GetType() : null);
+					return (true);
+				}
+                else if (String.Equals("$root", key, StringComparison.InvariantCultureIgnoreCase) == true)
+                {
+                    var root = this;
+
+                    while (root != null)
+                    {
+                        if (root.parent == null)
+                        {
+                            break;
+                        }
+
+                        root = root.parent;
+                    }
+
+                    result = root;
+                    return (true);
+                }
+                else if (String.Equals("$path", key, StringComparison.InvariantCultureIgnoreCase) == true)
+                {
+                    var list = new LinkedList<string>();
+
+                    var p = this.parent;
+                    var previous = (Object)this;
+
+                    while (p != null)
+                    {
+                        var kv = p.values.SingleOrDefault(x => (Object)x.Value == (Object)previous);
+
+                        list.AddFirst(kv.Key);
+
+                        previous = ((ElasticObject)kv.Value).parent;
+                        p = p.parent;
+                    }
+
+                    result = String.Join(".", list);
+                    return (true);
+                }
+                else
+                {
+					return (this.values.TryGetValue(key, out result));
+				}
+			}
+			else if (indexes.First() is Int32)
+			{
+				var index = (Int32)indexes.First();
 
 				if (this.values.Count < index)
 				{
@@ -393,12 +467,12 @@ namespace DevelopmentWithADot.ElasticObject
 				}
 			}
 
-			return (this.values.TryGetValue(indexes.First() as String, out result));
+			result = null;
+			return (false);
 		}
 		#endregion
 
 		#region IDictionary<String,Object> Members
-
 		void IDictionary<String,Object>.Add(String key, Object value)
 		{
 			(this as IDictionary<String,Object>)[key] = value;
@@ -406,14 +480,14 @@ namespace DevelopmentWithADot.ElasticObject
 
 		Boolean IDictionary<String,Object>.ContainsKey(String key)
 		{
-			return (this.values.ContainsKey(key));
+			return (this.GetDynamicMemberNames().Contains(key));
 		}
 
 		ICollection<String> IDictionary<String,Object>.Keys
 		{
 			get
 			{
-				return (this.values.Keys);
+				return (this.GetDynamicMemberNames().ToList());
 			}
 		}
 
@@ -424,14 +498,25 @@ namespace DevelopmentWithADot.ElasticObject
 
 		Boolean IDictionary<String,Object>.TryGetValue(String key, out Object value)
 		{
-			return (this.values.TryGetValue(key, out value));
+		    if (this.value != null)
+		    {
+		        var prop = TypeDescriptor.GetProperties(this.value)[key];
+
+		        if (prop != null)
+		        {
+		            value = prop.GetValue(this.value);
+		            return (true);
+		        }
+		    }
+
+		    return (this.values.TryGetValue(key, out value));
 		}
 
 		ICollection<Object> IDictionary<String,Object>.Values
 		{
 			get
 			{
-				return (this.values.Values);
+				return (this.values.Values.Concat((this.value != null) ? TypeDescriptor.GetProperties(this.value).OfType<PropertyDescriptor>().Select(x => x.GetValue(this.value)) : Enumerable.Empty<Object>()).ToList());
 			}
 		}
 
@@ -439,6 +524,16 @@ namespace DevelopmentWithADot.ElasticObject
 		{
 			get
 			{
+			    if (this.value != null)
+			    {
+			        var prop = TypeDescriptor.GetProperties(this.value)[key];
+
+			        if (prop != null)
+			        {
+			            return (prop.GetValue(this.value));
+			        }
+			    }
+
 				return (this.values[key]);
 			}
 			set
@@ -446,6 +541,7 @@ namespace DevelopmentWithADot.ElasticObject
 				if (value is ElasticObject)
 				{
 					this.values[key] = value;
+				    ((ElasticObject) value).parent = this;
 				}
 				else if (value == null)
 				{
@@ -453,7 +549,7 @@ namespace DevelopmentWithADot.ElasticObject
 				}
 				else
 				{
-					this.values[key] = new ElasticObject(value);
+					this.values[key] = new ElasticObject(this, value);
 				}
 
 				this.OnPropertyChanged(new PropertyChangedEventArgs(key));
@@ -469,32 +565,30 @@ namespace DevelopmentWithADot.ElasticObject
 				handler(this, e);
 			}
 		}
-
 		#endregion
 
 		#region ICollection<KeyValuePair<String,Object>> Members
-
-		void ICollection<KeyValuePair<String,Object>>.Add(KeyValuePair<String, Object> item)
+		void ICollection<KeyValuePair<String, Object>>.Add(KeyValuePair<String, Object> item)
 		{
 			(this as IDictionary<String, Object>)[item.Key] = item.Value;
 		}
 
-		void ICollection<KeyValuePair<String,Object>>.Clear()
+		void ICollection<KeyValuePair<String, Object>>.Clear()
 		{
 			this.values.Clear();
 		}
 
-		Boolean ICollection<KeyValuePair<String,Object>>.Contains(KeyValuePair<String, Object> item)
+		Boolean ICollection<KeyValuePair<String, Object>>.Contains(KeyValuePair<String, Object> item)
 		{
 			return (this.values.Contains(item));
 		}
 
-		void ICollection<KeyValuePair<String,Object>>.CopyTo(KeyValuePair<String, Object>[] array, Int32 arrayIndex)
+		void ICollection<KeyValuePair<String, Object>>.CopyTo(KeyValuePair<String, Object>[] array, Int32 arrayIndex)
 		{
-			this.values.CopyTo(array, arrayIndex);
+		    this.values.CopyTo(array, arrayIndex);
 		}
 
-		Int32 ICollection<KeyValuePair<String,Object>>.Count
+		Int32 ICollection<KeyValuePair<String, Object>>.Count
 		{
 			get
 			{
@@ -514,47 +608,38 @@ namespace DevelopmentWithADot.ElasticObject
 		{
 			return (this.values.Remove(item));
 		}
-
 		#endregion
 
 		#region IEnumerable<KeyValuePair<String,Object>> Members
-
 		IEnumerator<KeyValuePair<String, Object>> IEnumerable<KeyValuePair<String,Object>>.GetEnumerator()
 		{
 			return (this.values.GetEnumerator());
 		}
-
 		#endregion
 
 		#region IEnumerable Members
-
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return ((this as IDictionary<String, Object>).GetEnumerator());
 		}
-
 		#endregion
 
 		#region INotifyPropertyChanged Members
-
 		public event PropertyChangedEventHandler PropertyChanged;
-
 		#endregion
 
 		#region ICloneable Members
-
 		Object ICloneable.Clone()
 		{
-			var clone = new ElasticObject(this.value) as IDictionary<String, Object>;
+			var clone = new ElasticObject(null, this.value) as IDictionary<String, Object>;
 
 			foreach (var key in this.values.Keys)
 			{
-				clone[key] = this.values[key];
+			    clone[key] = (this.values[key] is ICloneable) ? (this.values[key] as ICloneable).Clone() : this.values[key];
 			}
 
 			return (clone);
 		}
-
 		#endregion
 	}
 }
